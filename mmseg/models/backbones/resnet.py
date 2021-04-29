@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.utils.checkpoint as cp
 from mmcv.cnn import (build_conv_layer, build_norm_layer, build_plugin_layer,
-                      constant_init, kaiming_init)
+                      build_activation_layer, constant_init, kaiming_init)
 from mmcv.runner import load_checkpoint
 from mmcv.utils.parrots_wrapper import _BatchNorm
 
@@ -25,6 +25,7 @@ class BasicBlock(nn.Module):
                  with_cp=False,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN'),
+                 act_cfg=dict(type='ReLU', inplace=True),
                  dcn=None,
                  plugins=None):
         super(BasicBlock, self).__init__()
@@ -48,7 +49,7 @@ class BasicBlock(nn.Module):
             conv_cfg, planes, planes, 3, padding=1, bias=False)
         self.add_module(self.norm2_name, norm2)
 
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = build_activation_layer(act_cfg)
         self.downsample = downsample
         self.stride = stride
         self.dilation = dilation
@@ -113,6 +114,7 @@ class Bottleneck(nn.Module):
                  with_cp=False,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN'),
+                 act_cfg=dict(type='ReLU', inplace=True),
                  dcn=None,
                  plugins=None):
         super(Bottleneck, self).__init__()
@@ -205,7 +207,7 @@ class Bottleneck(nn.Module):
             bias=False)
         self.add_module(self.norm3_name, norm3)
 
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = build_activation_layer(act_cfg)
         self.downsample = downsample
 
         if self.with_plugins:
@@ -385,6 +387,7 @@ class ResNet(nn.Module):
                  frozen_stages=-1,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
+                 act_cfg=dict(type='ReLU', inplace=True),
                  norm_eval=False,
                  dcn=None,
                  stage_with_dcn=(False, False, False, False),
@@ -412,6 +415,7 @@ class ResNet(nn.Module):
         self.frozen_stages = frozen_stages
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
+        self.act_cfg = act_cfg
         self.with_cp = with_cp
         self.norm_eval = norm_eval
         self.dcn = dcn
@@ -453,6 +457,7 @@ class ResNet(nn.Module):
                 with_cp=with_cp,
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
+                act_cfg=act_cfg,
                 dcn=dcn,
                 plugins=stage_plugins,
                 multi_grid=stage_multi_grid,
@@ -542,7 +547,7 @@ class ResNet(nn.Module):
                     padding=1,
                     bias=False),
                 build_norm_layer(self.norm_cfg, stem_channels // 2)[1],
-                nn.ReLU(inplace=True),
+                build_activation_layer(self.act_cfg),
                 build_conv_layer(
                     self.conv_cfg,
                     stem_channels // 2,
@@ -552,7 +557,7 @@ class ResNet(nn.Module):
                     padding=1,
                     bias=False),
                 build_norm_layer(self.norm_cfg, stem_channels // 2)[1],
-                nn.ReLU(inplace=True),
+                build_activation_layer(self.act_cfg),
                 build_conv_layer(
                     self.conv_cfg,
                     stem_channels // 2,
@@ -562,7 +567,7 @@ class ResNet(nn.Module):
                     padding=1,
                     bias=False),
                 build_norm_layer(self.norm_cfg, stem_channels)[1],
-                nn.ReLU(inplace=True))
+                build_activation_layer(self.act_cfg))
         else:
             self.conv1 = build_conv_layer(
                 self.conv_cfg,
@@ -575,7 +580,7 @@ class ResNet(nn.Module):
             self.norm1_name, norm1 = build_norm_layer(
                 self.norm_cfg, stem_channels, postfix=1)
             self.add_module(self.norm1_name, norm1)
-            self.relu = nn.ReLU(inplace=True)
+            self.relu = build_activation_layer(self.act_cfg)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def _freeze_stages(self):
