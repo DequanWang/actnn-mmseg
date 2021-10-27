@@ -166,6 +166,12 @@ def main():
     model.CLASSES = datasets[0].CLASSES
     # passing checkpoint meta for saving best checkpoint
     meta.update(cfg.checkpoint_config.meta)
+
+    if args.local_rank == 0:
+        for hook in cfg.log_config.hooks:
+            if hook['type'] == 'WandbLoggerHook':
+                hook['init_kwargs']['config'] = copy.deepcopy(cfg)
+
     train_segmentor(
         model,
         datasets,
