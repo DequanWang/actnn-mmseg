@@ -171,15 +171,41 @@ def main():
         for hook in cfg.log_config.hooks:
             if hook['type'] == 'WandbLoggerHook':
                 hook['init_kwargs']['config'] = copy.deepcopy(cfg)
+    actnn_cfg = cfg.get('actnn', None)
+    if actnn_cfg:
+        import actnn
+        controller = actnn.controller.Controller(
+            default_bit=actnn_cfg.default_bit, auto_prec=actnn_cfg.auto_prec)
 
-    train_segmentor(
-        model,
-        datasets,
-        cfg,
-        distributed=distributed,
-        validate=(not args.no_validate),
-        timestamp=timestamp,
-        meta=meta)
+        def pack_hook(x):
+            r = controller.quantize(x)
+            del x
+            return r
+
+        def unpack_hook(x):
+            r = controller.dequantize(x)
+            del x
+            return r
+
+        with torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook):
+            train_segmentor(
+                model,
+                datasets,
+                cfg,
+                controller=controller,
+                distributed=distributed,
+                validate=(not args.no_validate),
+                timestamp=timestamp,
+                meta=meta)
+    else:
+        train_segmentor(
+            model,
+            datasets,
+            cfg,
+            distributed=distributed,
+            validate=(not args.no_validate),
+            timestamp=timestamp,
+            meta=meta)
 
 
 if __name__ == '__main__':

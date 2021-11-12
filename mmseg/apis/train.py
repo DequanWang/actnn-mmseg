@@ -34,6 +34,7 @@ def set_random_seed(seed, deterministic=False):
 def train_segmentor(model,
                     dataset,
                     cfg,
+                    controller=None,
                     distributed=False,
                     validate=False,
                     timestamp=None,
@@ -118,22 +119,24 @@ def train_segmentor(model,
     elif cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
 
-    # runner.run(data_loaders, cfg.workflow)
-    if cfg.actnn:
-        import actnn
-        actnn.ops.filtering_tensors(runner.model.named_parameters())
+    if controller:
+        runner.controller = controller
+    runner.run(data_loaders, cfg.workflow)
+    # if cfg.actnn:
+    #     import actnn
+    #     actnn.ops.filtering_tensors(runner.model.named_parameters())
 
-        def pack_hook(x):
-            quantized, x_shape = actnn.ops.quantize_activation(x, None), x.shape
-            del x
-            return (quantized, x_shape)
+    #     def pack_hook(x):
+    #         quantized, x_shape = actnn.ops.quantize_activation(x, None), x.shape
+    #         del x
+    #         return (quantized, x_shape)
 
-        def unpack_hook(x):
-            dequantized = actnn.ops.dequantize_activation(x[0], x[1])
-            del x
-            return dequantized
+    #     def unpack_hook(x):
+    #         dequantized = actnn.ops.dequantize_activation(x[0], x[1])
+    #         del x
+    #         return dequantized
 
-        with torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook):
-            runner.run(data_loaders, cfg.workflow)
-    else:
-        runner.run(data_loaders, cfg.workflow)
+    #     with torch.autograd.graph.saved_tensors_hooks(pack_hook, unpack_hook):
+    #         runner.run(data_loaders, cfg.workflow)
+    # else:
+    #     runner.run(data_loaders, cfg.workflow)

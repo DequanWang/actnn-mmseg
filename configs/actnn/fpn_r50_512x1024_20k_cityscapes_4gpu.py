@@ -2,7 +2,7 @@ _base_ = [
     '../_base_/models/fpn_r50.py',
     '../_base_/datasets/cityscapes.py',
     '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_80k.py'
+    '../_base_/schedules/schedule_20k.py'
 ]
 
 actnn = dict(
@@ -16,9 +16,11 @@ custom_hooks = [
     )
 ]
 data = dict(
-    samples_per_gpu=8, # 8*1 = 8
+    samples_per_gpu=8, # 8*4 = 40
     workers_per_gpu=4,
 )
+optimizer = dict(lr=0.04)
+lr_config = dict(min_lr=4e-4)
 # optimizer_config = dict(
 #     grad_clip=dict(
 #         mode='agc',
@@ -42,7 +44,7 @@ log_config = dict(
             init_kwargs=dict(
                 project='segmentation',
                 entity='actnn',
-                name='fpn_r50_512x1024_80k_cityscapes_1gpu',
+                name='fpn_r50_512x1024_20k_cityscapes_4gpu',
             )
         )
     ]
